@@ -1,0 +1,15 @@
+{
+  "name": "melody-trainer",
+  "version": "1.0.0",
+  "description": "Melody Contour Training App",
+  "scripts": {
+    "build": "echo 'No build step needed for raw HTML'"
+  },
+  "dependencies": {
+    "@capacitor/core": "^5.7.8",
+    "@capacitor/ios": "^5.7.8"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.7.8"
+  }
+}
