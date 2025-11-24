@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>旋律听写</title>
+    <!-- 这里包含之前生成的完整CSS和JS代码 -->
+    <!-- 为了节省篇幅，请将之前最后一次生成的完整HTML代码粘贴在这里 -->
+    <!-- 务必确保包含完整的 AudioEngine 和界面逻辑 -->
+    <style>
+        /* 请复制之前的 CSS */
+        :root { --primary-color: #007AFF; --success-color: #34C759; --danger-color: #FF3B30; --bg-color: #F2F2F7; --card-bg: #FFFFFF; --text-color: #000000; --overlay-bg: rgba(0, 0, 0, 0.4); }
+        html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background-color: var(--bg-color); font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; touch-action: none; color: var(--text-color); -webkit-user-select: none; user-select: none; }
+        .app-layout { display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 100%; padding-top: max(15px, env(safe-area-inset-top)); padding-bottom: max(20px, env(safe-area-inset-bottom)); padding-left: max(15px, env(safe-area-inset-left)); padding-right: max(15px, env(safe-area-inset-right)); box-sizing: border-box; }
+        .nav-bar { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 10px; flex-shrink: 0; margin-bottom: 5px; position: relative; }
+        .menu-btn, .func-btn { background: none; border: none; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: background 0.2s; color: #333; width: 44px; height: 44px; }
+        .menu-btn:active, .func-btn:active { background: rgba(0,0,0,0.1); }
+        .menu-icon, .func-icon { width: 24px; height: 24px; fill: currentColor; }
+        .app-title { font-size: 17px; font-weight: 600; color: #000; letter-spacing: -0.5px; position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none; display: flex; align-items: center; gap: 6px; }
+        .canvas-area { flex: 1; position: relative; background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 15px; min-height: 0; touch-action: none; }
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+        .placeholder-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #8E8E93; pointer-events: none; font-size: 15px; font-weight: 500; }
+        .legend-overlay { position: absolute; bottom: 10px; left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; font-size: 12px; color: #666; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); padding: 6px 0; pointer-events: none; border-top: 1px solid rgba(0,0,0,0.05); }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+        .action-bar { position: relative; display: flex; align-items: center; height: 56px; flex-shrink: 0; padding: 0 5px; }
+        .left-actions { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10; }
+        .main-actions { display: flex; gap: 12px; flex: 1; justify-content: center; margin-left: 50px; width: 100%; }
+        .btn { flex: 1; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s; padding: 0 15px; height: 54px; -webkit-tap-highlight-color: transparent; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-next { background-color: #5856D6; color: white; display: none; }
+        .btn:disabled { background-color: #E5E5EA; color: #999; box-shadow: none; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-panel { background: #fff; width: 88%; max-width: 340px; max-height: 80vh; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); padding: 20px; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; gap: 15px; overflow: hidden; }
+        .modal-overlay.show .modal-panel { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-shrink: 0; }
+        .modal-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px;}
+        .close-btn { background: #F2F2F7; border: none; width: 32px; height: 32px; border-radius: 50%; color: #8E8E93; font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .settings-content, .mistakes-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+        .settings-content { display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px; }
+        .mistakes-list { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+        .mistake-item { background: #F9F9F9; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(0,0,0,0.05); transition: background 0.2s; }
+        .mistake-item:active { background: #F0F0F0; }
+        .mistake-info { display: flex; flex-direction: column; gap: 4px; cursor: pointer; flex: 1;}
+        .mistake-title { font-size: 16px; font-weight: 600; color: #000; }
+        .mistake-meta { font-size: 13px; color: #888; }
+        .mistake-delete { padding: 8px 12px; color: var(--danger-color); background: none; border: none; font-size: 15px; cursor: pointer; font-weight: 500; }
+        .empty-state { text-align: center; color: #999; padding: 40px 0; font-size: 15px; }
+        .practice-all-btn { background-color: #007AFF; color: white; border: none; border-radius: 14px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .control-group { background: #F9F9F9; padding: 10px 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .control-row { display: flex; align-items: center; justify-content: space-between; }
+        label { font-size: 15px; font-weight: 500; color: #000; }
+        .stepper { display: flex; align-items: center; background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .stepper button { background: transparent; border: none; width: 36px; height: 30px; font-size: 18px; color: #007AFF; font-weight: 600; }
+        .stepper span { width: 40px; text-align: center; font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+        .stepper.wide-stepper span { width: 90px; font-size: 14px; }
+        .dual-picker-wrapper { display: flex; height: 110px; position: relative; background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden; }
+        .picker-highlight-bar { position: absolute; top: 38px; left: 0; right: 0; height: 34px; background: rgba(0,0,0,0.04); border-top: 0.5px solid rgba(0,0,0,0.1); border-bottom: 0.5px solid rgba(0,0,0,0.1); pointer-events: none; z-index: 5; }
+        .picker-column { flex: 1; height: 100%; position: relative; text-align: center; }
+        .picker-labels { display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: -4px; font-size: 12px; color: #888; font-weight: 500;}
+        .picker-scroller { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; padding: 38px 0; box-sizing: content-box; scrollbar-width: none; touch-action: pan-y; }
+        .picker-scroller::-webkit-scrollbar { display: none; }
+        .picker-item { height: 34px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #000; scroll-snap-align: center; opacity: 0.3; transition: opacity 0.2s, transform 0.2s; }
+        .picker-item.active { opacity: 1; font-weight: 600; transform: scale(1.05); }
+        .toast { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(50,50,50,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-size: 15px; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px); }
+        .toast.show { opacity: 1; }
+        .practice-indicator { background-color: #FF9500; color: white; font-size: 11px; padding: 3px 8px; border-radius: 6px; margin-left: 8px; display: none; font-weight: 600; vertical-align: middle; }
+        @media (orientation: landscape) {
+            .app-layout { flex-direction: row; gap: 15px; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+            .nav-bar { flex-direction: column; height: 100%; width: 44px; justify-content: space-between; padding: 0; margin: 0; }
+            .app-title { display: none; }
+            .canvas-area { margin-bottom: 0; height: 100%; }
+            .action-bar { flex-direction: column; height: 100%; width: 70px; padding: 5px 0; }
+            .left-actions { position: static; margin-bottom: auto; transform: none; margin-right: 0; }
+            .main-actions { flex-direction: column; justify-content: flex-end; width: 100%; margin-left: 0; margin-top: 10px; gap: 10px; }
+            .btn { width: 100%; flex: 1; font-size: 13px; flex-direction: column; padding: 5px; height: auto; }
+            .btn svg { margin-bottom: 4px; }
+        }
+    </style>
+</head>
+<body>
+<!-- 请务必在此处粘贴之前生成的完整 HTML body 内容，包含 DOM 结构和 <script> 脚本 -->
+<!-- 为了确保功能完整，您需要将上一轮对话中提供的完整 <body>...</body> 内容复制到这里 -->
+<!-- 必须包含 AudioEngine 对象和界面交互逻辑 -->
+<!-- 如果您不确定，请直接使用上一轮对话中的完整代码文件 -->
+</body>
+</html>
