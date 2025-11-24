@@ -1,6 +1,7 @@
 {
   "appId": "com.melodytrainer.app",
   "appName": "旋律听写",
-  "webDir": ".", 
+  "webDir": "public", 
   "bundledWebRuntime": false
+
 }
