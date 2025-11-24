@@ -7,11 +7,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-latest  # 第12行，确保缩进正确（通常为2或4个空格）
 
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # 建议升级到v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -19,17 +19,23 @@ jobs:
           node-version: '18'
 
       - name: Install Dependencies
-        run: npm install
+        run: |
+          cd melodytraining  # 新增：进入项目根目录（因为index.html在该目录下）
+          npm install
 
       - name: Add iOS Platform
-        run: npx cap add ios
+        run: |
+          cd melodytraining
+          npx cap add ios
 
       - name: Sync Project
-        run: npx cap sync
+        run: |
+          cd melodytraining
+          npx cap sync
 
       - name: Build Unsigned Archive
         run: |
-          cd ios
+          cd melodytraining/ios  # 调整路径，进入正确的ios目录
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
@@ -42,18 +48,13 @@ jobs:
 
       - name: Create Payload for AltStore
         run: |
-          cd ios/build/App.xcarchive/Products/Applications
+          cd melodytraining/ios/build/App.xcarchive/Products/Applications
           mkdir Payload
           mv App.app Payload/
           zip -r MelodyTrainer.ipa Payload
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4  # 已升级到v4
         with:
           name: MelodyTrainer-IPA
-          path: ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
-
-       - name: Verify Web Directory
-  run: |
-    echo "Checking web directory contents:"
-    ls -la public 
+          path: melodytraining/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
