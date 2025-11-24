@@ -20,22 +20,22 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd melodytraining  # 进入项目目录
+          cd melodytraining  # 进入项目根目录
           npm install
 
       - name: Add iOS Platform
         run: |
-          cd melodytraining  # 进入项目目录
+          cd melodytraining  # 进入项目根目录
           npx cap add ios
 
       - name: Sync Project
         run: |
-          cd melodytraining  # 进入项目目录
+          cd melodytraining  # 进入项目根目录
           npx cap sync
 
       - name: Build Unsigned Archive
         run: |
-          cd melodytraining/ios  # 进入ios目录（注意路径前缀）
+          cd melodytraining/ios  # 进入iOS项目目录（带melodytraining前缀）
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
@@ -48,7 +48,7 @@ jobs:
 
       - name: Create Payload for AltStore
         run: |
-          # 注意路径前缀增加 melodytraining/
+          # 路径包含melodytraining前缀
           cd melodytraining/ios/build/App.xcarchive/Products/Applications
           mkdir Payload
           mv App.app Payload/
@@ -58,5 +58,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MelodyTrainer-IPA
-          # 注意路径前缀增加 melodytraining/
+          # 路径包含melodytraining前缀
           path: melodytraining/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
