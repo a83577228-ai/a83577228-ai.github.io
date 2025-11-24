@@ -1,0 +1,54 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Add iOS Platform
+        run: npx cap add ios
+
+      - name: Sync Project
+        run: npx cap sync
+
+      - name: Build Unsigned Archive
+        run: |
+          cd ios
+          xcodebuild -workspace App/App.xcworkspace \
+            -scheme App \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath $PWD/build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: Create Payload for AltStore
+        run: |
+          cd ios/build/App.xcarchive/Products/Applications
+          mkdir Payload
+          mv App.app Payload/
+          zip -r MelodyTrainer.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v3
+        with:
+          name: MelodyTrainer-IPA
+          path: ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
