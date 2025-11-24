@@ -58,3 +58,8 @@ jobs:
         with:
           name: MelodyTrainer-IPA
           path: melodytraining/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
+
+      - name: Verify Web Directory
+        run: |
+          echo "Checking web directory contents:"
+          ls -la public  
