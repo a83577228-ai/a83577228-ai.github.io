@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <!-- 核心视口设置 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <!-- iOS PWA 专属设置 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="旋律听写">
+    
+    <title>旋律走向听写测试</title>
+    <style>
+        :root {
+            --primary-color: #007AFF;
+            --success-color: #34C759;
+            --danger-color: #FF3B30;
+            --bg-color: #F2F2F7;
+            --card-bg: #FFFFFF;
+            --text-color: #000000;
+            --overlay-bg: rgba(0, 0, 0, 0.4);
+        }
+
+        * { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100dvh;
+            background-color: var(--bg-color);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden; touch-action: none; color: var(--text-color);
+        }
+
+        .app-layout {
+            display: flex; flex-direction: column; height: 100%; width: 100%; max-width: 100%;
+            padding-top: max(15px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+            padding-left: max(15px, env(safe-area-inset-left));
+            padding-right: max(15px, env(safe-area-inset-right));
+            box-sizing: border-box;
+        }
+
+        /* 顶部导航栏 */
+        .nav-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 44px; 
+            padding: 0 10px; 
+            flex-shrink: 0; margin-bottom: 5px;
+            position: relative;
+        }
+
+        .menu-btn, .func-btn {
+            background: none; border: none; padding: 0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; transition: background 0.2s; color: #333;
+            width: 44px; height: 44px;
+        }
+        .menu-btn:active, .func-btn:active { background: rgba(0,0,0,0.1); }
+        .menu-icon, .func-icon { width: 24px; height: 24px; fill: currentColor; }
+
+        .app-title {
+            font-size: 17px; font-weight: 600; color: #000; letter-spacing: -0.5px;
+            position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* 画布区域 */
+        .canvas-area {
+            flex: 1; position: relative; background: #fff; border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden;
+            margin-bottom: 15px; min-height: 0; touch-action: none;
+        }
+
+        canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+        .placeholder-text {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #8E8E93; pointer-events: none; font-size: 15px; font-weight: 500;
+        }
+
+        .legend-overlay {
+            position: absolute; bottom: 10px; left: 0; width: 100%;
+            display: flex; justify-content: center; gap: 20px;
+            font-size: 12px; color: #666; background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(10px); padding: 6px 0; pointer-events: none;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+        /* 底部操作栏 */
+        .action-bar {
+            position: relative; display: flex; align-items: center; height: 56px; flex-shrink: 0;
+            padding: 0 5px; 
+        }
+
+        .main-actions { display: flex; gap: 12px; flex: 1; justify-content: center; width: 100%; }
+
+        .btn {
+            flex: 1; border: none; border-radius: 14px; font-size: 17px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            transition: transform 0.1s, opacity 0.2s; padding: 0 15px; height: 54px;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .btn:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-success { background-color: var(--success-color); color: white; }
+        .btn-next { background-color: #5856D6; color: white; display: none; }
+        .btn:disabled { background-color: #E5E5EA; color: #999; box-shadow: none; }
+
+        /* 弹窗 */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(3px); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+        .modal-panel {
+            background: #fff; width: 88%; max-width: 340px; max-height: 80vh;
+            border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            padding: 20px; transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            display: flex; flex-direction: column; gap: 15px; overflow: hidden;
+        }
+        .modal-overlay.show .modal-panel { transform: scale(1); }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; flex-shrink: 0; }
+        .modal-title { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px;}
+        .close-btn {
+            background: #F2F2F7; border: none; width: 32px; height: 32px;
+            border-radius: 50%; color: #8E8E93; font-size: 20px; line-height: 1;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+
+        .settings-content, .mistakes-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
+        .settings-content { display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px; }
+        .mistakes-list { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+
+        .mistake-item {
+            background: #F9F9F9; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;
+            border: 1px solid rgba(0,0,0,0.05); transition: background 0.2s;
+        }
+        .mistake-item:active { background: #F0F0F0; }
+        .mistake-info { display: flex; flex-direction: column; gap: 4px; cursor: pointer; flex: 1;}
+        .mistake-title { font-size: 16px; font-weight: 600; color: #000; }
+        .mistake-meta { font-size: 13px; color: #888; }
+        .mistake-delete {
+            padding: 8px 12px; color: var(--danger-color); background: none; border: none; font-size: 15px; cursor: pointer; font-weight: 500;
+        }
+        .empty-state { text-align: center; color: #999; padding: 40px 0; font-size: 15px; }
+        
+        .practice-all-btn {
+            background-color: #007AFF; color: white; border: none; border-radius: 14px;
+            padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+
+        /* 控件样式 */
+        .control-group { background: #F9F9F9; padding: 10px 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .control-row { display: flex; align-items: center; justify-content: space-between; }
+        label { font-size: 15px; font-weight: 500; color: #000; }
+
+        .stepper { display: flex; align-items: center; background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .stepper button { background: transparent; border: none; width: 36px; height: 30px; font-size: 18px; color: #007AFF; font-weight: 600; }
+        .stepper span { width: 40px; text-align: center; font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; }
+        .stepper.wide-stepper span { width: 90px; font-size: 14px; }
+
+        .dual-picker-wrapper {
+            display: flex; height: 110px; position: relative;
+            background: #fff; border: 0.5px solid rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden;
+        }
+        .picker-highlight-bar {
+            position: absolute; top: 38px; left: 0; right: 0; height: 34px;
+            background: rgba(0,0,0,0.04); border-top: 0.5px solid rgba(0,0,0,0.1); border-bottom: 0.5px solid rgba(0,0,0,0.1); pointer-events: none; z-index: 5;
+        }
+        .picker-column { flex: 1; height: 100%; position: relative; text-align: center; }
+        .picker-labels { display: flex; justify-content: space-between; padding: 0 10px; margin-bottom: -4px; font-size: 12px; color: #888; font-weight: 500;}
+        .picker-scroller {
+            height: 100%; overflow-y: auto; scroll-snap-type: y mandatory;
+            padding: 38px 0; box-sizing: content-box; scrollbar-width: none; touch-action: pan-y; 
+        }
+        .picker-scroller::-webkit-scrollbar { display: none; }
+        .picker-item {
+            height: 34px; display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: #000; scroll-snap-align: center; opacity: 0.3; transition: opacity 0.2s, transform 0.2s;
+        }
+        .picker-item.active { opacity: 1; font-weight: 600; transform: scale(1.05); }
+
+        .toast {
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+            background: rgba(50,50,50,0.9); color: white; padding: 12px 24px; border-radius: 30px;
+            font-size: 15px; font-weight: 500; pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 3000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px);
+        }
+        .toast.show { opacity: 1; }
+        
+        .practice-indicator {
+            background-color: #FF9500; color: white; font-size: 11px; padding: 3px 8px; border-radius: 6px;
+            margin-left: 8px; display: none; font-weight: 600; vertical-align: middle;
+        }
+
+        @media (orientation: landscape) {
+            .app-layout { flex-direction: row; gap: 15px; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+            .nav-bar { flex-direction: column; height: 100%; width: 44px; justify-content: space-between; padding: 0; margin: 0; }
+            .app-title { display: none; }
+            .canvas-area { margin-bottom: 0; height: 100%; }
+            .action-bar { flex-direction: column; height: 100%; width: 70px; padding: 5px 0; }
+            .main-actions { flex-direction: column; justify-content: flex-end; width: 100%; margin-left: 0; margin-top: 10px; gap: 10px; }
+            .btn { width: 100%; flex: 1; font-size: 13px; flex-direction: column; padding: 5px; height: auto; }
+            .btn svg { margin-bottom: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-layout">
+    <!-- 顶部导航栏 -->
+    <div class="nav-bar">
+        <!-- 左上角：设置键 -->
+        <button class="menu-btn" id="btn-open-settings">
+            <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        
+        <div class="app-title">
+            旋律听写
+            <span id="practice-badge" class="practice-indicator">复习模式</span>
+        </div>
+        
+        <!-- 右上角：错题集 -->
+        <button class="func-btn" id="btn-open-mistakes">
+            <svg class="func-icon" viewBox="0 0 24 24"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </button>
+    </div>
+
+    <!-- 画布区域 -->
+    <div class="canvas-area" id="canvas-container">
+        <canvas id="melodyCanvas"></canvas>
+        <div class="placeholder-text" id="status-text">点击播放开始</div>
+        <div class="legend-overlay">
+            <span><span class="dot" style="background: var(--primary-color);"></span>我的</span>
+            <span><span class="dot" style="background: var(--success-color);"></span>答案</span>
+        </div>
+    </div>
+
+    <!-- 底部/右侧 操作栏 -->
+    <div class="action-bar">
+        <div class="main-actions">
+            <button id="btn-play" class="btn btn-primary">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                <span id="btn-play-text">播放</span>
+            </button>
+
+            <button id="btn-check" class="btn btn-success" disabled>
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                验证
+            </button>
+
+            <button id="btn-next" class="btn btn-next">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                下一题
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal-overlay" id="settings-modal">
+    <div class="modal-panel">
+        <div class="modal-header">
+            <div class="modal-title">设置</div>
+            <button class="close-btn" id="btn-close-settings">×</button>
+        </div>
+        <div class="settings-content">
+            <div class="control-group">
+                <div class="control-row">
+                    <label>音色</label>
+                    <div class="stepper wide-stepper">
+                        <button id="btn-inst-prev">‹</button>
+                        <span id="instrument-display">钢琴</span>
+                        <button id="btn-inst-next">›</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-row">
+                    <label>节奏模式</label>
+                    <div class="stepper wide-stepper">
+                        <button id="btn-rhythm-prev">‹</button>
+                        <span id="rhythm-display">无</span>
+                        <button id="btn-rhythm-next">›</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="control-row">
+                    <label>音符数量</label>
+                    <div class="stepper">
+                        <button id="btn-decrease">−</button>
+                        <span id="note-count-display">5</span>
+                        <button id="btn-increase">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="control-row">
+                    <label>最大跳跃</label>
+                    <div class="stepper">
+                        <button id="btn-jump-decrease">−</button>
+                        <span id="jump-display">4度</span>
+                        <button id="btn-jump-increase">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="control-group">
+                <div class="picker-labels">
+                    <span class="picker-label">最低音</span>
+                    <span class="picker-label">最高音</span>
+                </div>
+                <div class="dual-picker-wrapper">
+                    <div class="picker-highlight-bar"></div>
+                    <div class="picker-column">
+                        <div class="picker-scroller" id="picker-start"></div>
+                    </div>
+                    <div class="picker-column" style="border-left: 1px solid #eee;">
+                        <div class="picker-scroller" id="picker-end"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 错题集弹窗 -->
+<div class="modal-overlay" id="mistakes-modal">
+    <div class="modal-panel">
+        <div class="modal-header">
+            <div class="modal-title">
+                错题集
+                <button class="practice-all-btn" id="btn-practice-all" style="display:none; margin-left:10px;">全部练习</button>
+            </div>
+            <button class="close-btn" id="btn-close-mistakes">×</button>
+        </div>
+        <div class="mistakes-list" id="mistakes-list-container">
+            <!-- JS Populate -->
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast-msg">已加入错题集</div>
+
+<script>
+    /** Audio Engine (Sampling + Synthesis Fallback) */
+    const AudioEngine = {
+        ctx: null, masterGain: null, compressorNode: null, reverbNode: null, reverbBufferCache: null,
+        activeNodes: [], samples: {}, sampleBaseUrl: 'https://gleitz.github.io/midi-js-soundfonts/FluidR3_GM/',
+        instruments: [
+            { id: 'piano', name: '钢琴', file: 'acoustic_grand_piano' },
+            { id: 'guitar', name: '吉他', file: 'acoustic_guitar_nylon' },
+            { id: 'ukulele', name: '尤克里里', file: 'acoustic_guitar_steel' },
+            { id: 'bass', name: '贝斯', file: 'acoustic_bass' }
+        ],
+        currentInstIndex: 0, isLoading: false,
+
+        init: async function() {
+            let contextReset = false;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!this.ctx || this.ctx.state === 'closed') { this.ctx = new AudioContext(); contextReset = true; }
+            if (this.ctx.state === 'suspended') { try { await this.ctx.resume(); } catch (e) { this.ctx = new AudioContext(); contextReset = true; } }
+            if (contextReset || !this.compressorNode) { await this.buildAudioGraph(); }
+            this.loadCurrentInstrumentSamples();
+        },
+        buildAudioGraph: async function() {
+            if (!this.ctx) return;
+            this.compressorNode = this.ctx.createDynamicsCompressor();
+            this.compressorNode.threshold.value = -24; this.compressorNode.knee.value = 30; this.compressorNode.ratio.value = 12; this.compressorNode.attack.value = 0.003; this.compressorNode.release.value = 0.25;
+            this.reverbNode = this.ctx.createConvolver();
+            if (!this.reverbBufferCache) { this.reverbBufferCache = this.createReverbBuffer(2.0); }
+            this.reverbNode.buffer = this.reverbBufferCache;
+            const reverbGain = this.ctx.createGain(); reverbGain.gain.value = 0.3; this.reverbNode.connect(reverbGain);
+            this.masterGain = this.ctx.createGain(); this.masterGain.gain.value = 0.8;
+            this.compressorNode.connect(this.masterGain); this.compressorNode.connect(this.reverbNode); reverbGain.connect(this.masterGain);
+            this.masterGain.connect(this.ctx.destination);
+        },
+        createReverbBuffer: function(duration) {
+            const rate = this.ctx.sampleRate; const len = rate * duration; const buff = this.ctx.createBuffer(2, len, rate);
+            for (let c = 0; c < 2; c++) { const data = buff.getChannelData(c); for (let i = 0; i < len; i++) { data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2); } }
+            return buff;
+        },
+        stopAll: function() {
+            this.activeNodes.forEach(node => { try { node.stop(); node.disconnect(); } catch(e) {} });
+            this.activeNodes = [];
+        },
+        loadCurrentInstrumentSamples: async function() {
+            const inst = this.instruments[this.currentInstIndex];
+            if (this.samples[inst.id]) return;
+            this.isLoading = true;
+            const anchors = { 36: 'C2', 48: 'C3', 60: 'C4', 72: 'C5', 84: 'C6', 96: 'C7' };
+            this.samples[inst.id] = {};
+            const promises = Object.entries(anchors).map(async ([midi, note]) => {
+                try {
+                    const resp = await fetch(`${this.sampleBaseUrl}${inst.file}-mp3/${note}.mp3`);
+                    const arrayBuf = await resp.arrayBuffer();
+                    this.samples[inst.id][midi] = await this.ctx.decodeAudioData(arrayBuf);
+                } catch (e) {}
+            });
+            await Promise.all(promises);
+            this.isLoading = false;
+        },
+        ensureSamplesLoaded: async function() {
+            if (this.isLoading) { while(this.isLoading) { await new Promise(r => setTimeout(r, 100)); } }
+            else if (!this.samples[this.instruments[this.currentInstIndex].id]) { await this.loadCurrentInstrumentSamples(); }
+        },
+        playTone: function(midi, time, duration, velocity = 1.0) {
+            if (!this.compressorNode) return;
+            const instId = this.instruments[this.currentInstIndex].id;
+            const bank = this.samples[instId];
+            if (bank && Object.keys(bank).length > 0) {
+                let bestDiff = Infinity; let baseMidi = -1;
+                Object.keys(bank).forEach(k => { const diff = Math.abs(midi - k); if (diff < bestDiff) { bestDiff = diff; baseMidi = parseInt(k); } });
+                if (baseMidi !== -1) {
+                    const src = this.ctx.createBufferSource(); src.buffer = bank[baseMidi];
+                    const semitoneDiff = midi - baseMidi; src.playbackRate.value = Math.pow(2, semitoneDiff / 12);
+                    const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0, time);
+                    const peakGain = 1.0 * velocity;
+                    gain.gain.linearRampToValueAtTime(peakGain, time + 0.02); 
+                    gain.gain.exponentialRampToValueAtTime(0.01, time + duration + 1.5);
+                    src.connect(gain); gain.connect(this.compressorNode); src.start(time); src.stop(time + duration + 2.0);
+                    this.activeNodes.push(src);
+                    src.onended = () => { const idx = this.activeNodes.indexOf(src); if (idx > -1) this.activeNodes.splice(idx, 1); };
+                    return;
+                }
+            }
+            this.playSynthFallback(midi, time, duration, velocity);
+        },
+        playSynthFallback: function(midi, time, duration, velocity = 1.0) {
+            const freq = 440 * Math.pow(2, (midi - 69) / 12);
+            const instId = this.instruments[this.currentInstIndex].id;
+            const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+            if (instId === 'bass') {
+                osc.type = 'sawtooth';
+                const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.setValueAtTime(freq * 4, time); filter.frequency.exponentialRampToValueAtTime(freq, time + 0.2);
+                osc.connect(filter); filter.connect(gain);
+            } else { osc.type = 'triangle'; osc.connect(gain); }
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(0.5 * velocity, time + 0.05); gain.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            gain.connect(this.compressorNode); osc.start(time); osc.stop(time + duration + 0.5);
+            this.activeNodes.push(osc);
+            osc.onended = () => { const idx = this.activeNodes.indexOf(osc); if (idx > -1) this.activeNodes.splice(idx, 1); };
+        },
+        changeInstrument: function(delta) {
+            let n = this.currentInstIndex + delta; if (n < 0) n = this.instruments.length - 1; if (n >= this.instruments.length) n = 0;
+            this.currentInstIndex = n; this.loadCurrentInstrumentSamples(); return this.instruments[n].name;
+        }
+    };
+
+    function playTickSound() {
+        if (!AudioEngine.ctx) AudioEngine.init();
+        const ctx = AudioEngine.ctx; if (!ctx) return;
+        const t = ctx.currentTime; const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.005, ctx.sampleRate);
+        const data = buffer.getChannelData(0); for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+        const noise = ctx.createBufferSource(); noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter(); filter.type = 'highpass'; filter.frequency.value = 1200; 
+        const gain = ctx.createGain(); gain.gain.setValueAtTime(0.3, t); gain.gain.exponentialRampToValueAtTime(0.01, t + 0.005);
+        noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination); noise.start(t);
+    }
+
+    const PIANO_KEYS = []; const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    for (let m = 21; m <= 108; m++) { const noteName = NOTE_NAMES[m % 12]; const octave = Math.floor(m / 12) - 1; PIANO_KEYS.push({ midi: m, label: `${noteName}${octave}` }); }
+    const FULL_SCALE = []; for (let m = 21; m <= 108; m++) { const pc = m % 12; if ([0, 2, 4, 5, 7, 9, 11].includes(pc)) FULL_SCALE.push(m); }
+
+    const RHYTHM_MODES = [ { name: "无", id: 'none' }, { name: "2拍子", id: '2/4' }, { name: "3拍子", id: '3/4' }, { name: "4拍子", id: '4/4' }, { name: "反拍", id: 'offbeat' } ];
+    let noteCount = 5; let startMidi = 48; let endMidi = 72; let maxJumpDegree = 4;
+    let currentRhythmIndex = 0; let melodyNotes = []; let userPoints = []; let isGameActive = false; let isRevealed = false;
+    let mistakeList = JSON.parse(localStorage.getItem('melody_mistakes') || '[]');
+    let isPracticeMode = false; let practiceIndex = 0; let currentMelodyRhythmMode = 'none'; let playSessionId = 0;
+
+    const canvas = document.getElementById('melodyCanvas'); const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container'); const statusText = document.getElementById('status-text');
+    const displayCount = document.getElementById('note-count-display'); const displayJump = document.getElementById('jump-display');
+    const displayInst = document.getElementById('instrument-display'); const displayRhythm = document.getElementById('rhythm-display');
+    const settingsModal = document.getElementById('settings-modal'); const mistakesModal = document.getElementById('mistakes-modal');
+    const btnPlay = document.getElementById('btn-play'); const btnPlayText = document.getElementById('btn-play-text');
+    const btnCheck = document.getElementById('btn-check'); const btnNext = document.getElementById('btn-next');
+    const toastMsg = document.getElementById('toast-msg'); const practiceBadge = document.getElementById('practice-badge');
+    const btnPracticeAll = document.getElementById('btn-practice-all');
+
+    function showToast(msg) {
+        toastMsg.textContent = msg; toastMsg.classList.add('show');
+        setTimeout(() => toastMsg.classList.remove('show'), 2000);
+    }
+
+    function resizeCanvas() {
+        const rect = container.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
+        canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr); canvas.logicalWidth = rect.width; canvas.logicalHeight = rect.height;
+        drawCanvas();
+    }
+    let resizeTimeout;
+    window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(resizeCanvas, 100); });
+    document.body.addEventListener('touchstart', function() { if (AudioEngine.ctx && AudioEngine.ctx.state === 'suspended') { AudioEngine.ctx.resume(); } }, {capture: true, once: false});
+
+    document.getElementById('btn-open-settings').addEventListener('click', () => {
+        settingsModal.classList.add('show');
+        setTimeout(() => {
+            const startIdx = PIANO_KEYS.findIndex(k => k.midi === startMidi); const endIdx = PIANO_KEYS.findIndex(k => k.midi === endMidi);
+            document.getElementById('picker-start').scrollTop = startIdx * 34; document.getElementById('picker-end').scrollTop = endIdx * 34;
+        }, 50);
+    });
+    document.getElementById('btn-close-settings').addEventListener('click', () => settingsModal.classList.remove('show'));
+    
+    document.getElementById('btn-open-mistakes').addEventListener('click', () => { renderMistakes(); mistakesModal.classList.add('show'); });
+    document.getElementById('btn-close-mistakes').addEventListener('click', () => mistakesModal.classList.remove('show'));
+    
+    btnPracticeAll.addEventListener('click', () => {
+        if (mistakeList.length === 0) return;
+        isPracticeMode = true; practiceIndex = 0; practiceBadge.style.display = 'inline-block';
+        mistakesModal.classList.remove('show'); loadMistake(0, true);
+    });
+
+    function renderMistakes() {
+        const list = document.getElementById('mistakes-list-container'); list.innerHTML = '';
+        btnPracticeAll.style.display = (mistakeList.length > 0) ? 'inline-block' : 'none';
+        if (mistakeList.length === 0) { list.innerHTML = '<div class="empty-state">暂无错题，加油练习！</div>'; return; }
+        mistakeList.forEach((item, index) => {
+            const el = document.createElement('div'); el.className = 'mistake-item';
+            el.innerHTML = `<div class="mistake-info" onclick="loadMistake(${index})"><div class="mistake-title">旋律 #${index + 1}</div><div class="mistake-meta">${item.notes.length}个音 · 跳跃 ${item.jump}度 · ${item.date}</div></div><button class="mistake-delete" onclick="deleteMistake(${index})">删除</button>`;
+            list.appendChild(el);
+        });
+    }
+
+    window.loadMistake = function(index, isAuto = false) {
+        if (!isAuto) { isPracticeMode = false; practiceBadge.style.display = 'none'; }
+        const item = mistakeList[index]; if (!item) return; 
+        melodyNotes = [...item.notes]; noteCount = melodyNotes.length; displayCount.textContent = noteCount;
+        currentMelodyRhythmMode = RHYTHM_MODES[currentRhythmIndex].id;
+        userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
+        btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "重听";
+        statusText.style.display = 'none'; mistakesModal.classList.remove('show'); resizeCanvas(); 
+        setTimeout(() => playMelody(), 100);
+    };
+
+    window.deleteMistake = function(index) { mistakeList.splice(index, 1); localStorage.setItem('melody_mistakes', JSON.stringify(mistakeList)); renderMistakes(); };
+
+    function saveMistake() {
+        const now = new Date(); const dateStr = `${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes()}`;
+        const newItem = { notes: [...melodyNotes], jump: maxJumpDegree, date: dateStr };
+        const exists = mistakeList.some(m => JSON.stringify(m.notes) === JSON.stringify(newItem.notes));
+        if (!exists) { mistakeList.unshift(newItem); if (mistakeList.length > 50) mistakeList.pop(); localStorage.setItem('melody_mistakes', JSON.stringify(mistakeList)); showToast('已加入错题集'); }
+    }
+
+    function checkAnswerAndSave() {
+        if (isPracticeMode) return;
+        const tolerance = 0.03; let isWrong = false;
+        for (let i = 0; i < melodyNotes.length - 1; i++) {
+            const melDir = Math.sign(melodyNotes[i+1] - melodyNotes[i]);
+            if (userPoints[i] === null || userPoints[i+1] === null) { isWrong = true; break; }
+            const diff = userPoints[i] - userPoints[i+1];
+            let userDir = (Math.abs(diff) <= tolerance) ? 0 : Math.sign(diff);
+            if (melDir !== userDir) { isWrong = true; break; }
+        }
+        if (isWrong) { saveMistake(); }
+    }
+
+    function initDualPicker() { createPickerColumn('picker-start', startMidi, (val) => { startMidi = val; resetGame(); }); createPickerColumn('picker-end', endMidi, (val) => { endMidi = val; resetGame(); }); }
+    function createPickerColumn(elementId, initialMidi, onUpdate) {
+        const picker = document.getElementById(elementId);
+        PIANO_KEYS.forEach((key, index) => {
+            const div = document.createElement('div'); div.className = 'picker-item'; div.textContent = key.label;
+            if (key.midi === initialMidi) div.classList.add('active');
+            div.addEventListener('click', () => picker.scrollTo({ top: index * 34, behavior: 'smooth' }));
+            picker.appendChild(div);
+        });
+        let isScrolling;
+        picker.addEventListener('scroll', () => {
+            const index = Math.round(picker.scrollTop / 34);
+            if (index >= 0 && index < PIANO_KEYS.length) {
+                const sel = PIANO_KEYS[index].midi;
+                if (sel !== initialMidi) {
+                    Array.from(picker.children).forEach(c => c.classList.remove('active'));
+                    picker.children[index]?.classList.add('active'); playTickSound();
+                    window.clearTimeout(isScrolling); isScrolling = setTimeout(() => onUpdate(sel), 200);
+                }
+            }
+        });
+    }
+
+    function generateMelody() {
+        melodyNotes = []; currentMelodyRhythmMode = RHYTHM_MODES[currentRhythmIndex].id;
+        const rangeMin = Math.min(startMidi, endMidi); const rangeMax = Math.max(startMidi, endMidi);
+        const validNotes = FULL_SCALE.filter(n => n >= rangeMin && n <= rangeMax);
+        if (validNotes.length === 0) { melodyNotes = new Array(noteCount).fill(rangeMin); return; }
+        let curr = validNotes[Math.floor(Math.random() * validNotes.length)];
+        if (validNotes.length > 4) { const margin = Math.floor(validNotes.length * 0.2); curr = validNotes[margin + Math.floor(Math.random() * (validNotes.length - margin * 2))]; }
+        for (let i = 0; i < noteCount; i++) {
+            const span = (maxJumpDegree - 1) * 2 + 1; const currIdx = validNotes.indexOf(curr);
+            let nextIdx = currIdx + Math.floor(Math.random() * span) - (maxJumpDegree - 1);
+            if (nextIdx < 0) nextIdx = 0; if (nextIdx >= validNotes.length) nextIdx = validNotes.length - 1;
+            if (nextIdx === currIdx && i > 0 && maxJumpDegree > 1 && Math.random() > 0.5) { nextIdx += (Math.random() > 0.5 ? 1 : -1); if (nextIdx < 0) nextIdx = 1; if (nextIdx >= validNotes.length) nextIndex = validNotes.length - 2; }
+            curr = validNotes[nextIdx] || validNotes[0]; melodyNotes.push(curr);
+        }
+    }
+
+    async function playMelody() {
+        playSessionId++; const mySession = playSessionId;
+        AudioEngine.stopAll();
+        await AudioEngine.init();
+        if (btnPlayText.textContent === "播放" || btnPlayText.textContent === "重听") {
+             btnPlayText.textContent = "加载中";
+             await AudioEngine.ensureSamplesLoaded();
+             if (mySession !== playSessionId) return;
+             btnPlayText.textContent = "重听"; 
+        }
+        if (!AudioEngine.ctx) return;
+        const now = AudioEngine.ctx.currentTime; const noteDuration = 0.6; const mode = currentMelodyRhythmMode;
+        melodyNotes.forEach((note, i) => { 
+            let velocity = 1.0;
+            if (mode === 'none') { velocity = 1.0; } 
+            else if (mode === '2/4') { velocity = (i % 2 === 0) ? 1.5 : 0.4; } 
+            else if (mode === '3/4') { velocity = (i % 3 === 0) ? 1.5 : 0.4; } 
+            else if (mode === '4/4') { if (i % 4 === 0) velocity = 1.6; else if (i % 4 === 2) velocity = 1.1; else velocity = 0.4; } 
+            else if (mode === 'offbeat') { velocity = (i % 2 !== 0) ? 1.5 : 0.4; }
+            AudioEngine.playTone(note, now + i * noteDuration, noteDuration, velocity); 
+        });
+    }
+
+    function drawCanvas() {
+        if (!canvas.logicalWidth) return;
+        const w = canvas.logicalWidth, h = canvas.logicalHeight, colW = w / noteCount;
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < noteCount; i++) {
+            if (i % 2 === 0) { ctx.fillStyle = '#fafafa'; ctx.fillRect(i * colW, 0, colW, h); }
+            ctx.beginPath(); ctx.moveTo((i+1)*colW, 0); ctx.lineTo((i+1)*colW, h); ctx.strokeStyle = '#f0f0f0'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = '#ccc'; ctx.font = '12px Arial'; ctx.fillText(i + 1, i * colW + colW/2 - 4, h - 40);
+        }
+        if (!isGameActive) return;
+        if (userPoints.some(p => p !== null)) {
+            ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(0, 122, 255, 0.2)'; ctx.lineWidth = 1;
+            userPoints.forEach(p => { if (p !== null) { const y = p * h; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }}); ctx.restore();
+        }
+        if (userPoints.some(p => p !== null)) drawPath(userPoints, '#007AFF', 3, false);
+        if (isRevealed) {
+            const min = Math.min(...melodyNotes), max = Math.max(...melodyNotes); const range = (max - min) || 12, pad = 0.2;
+            const norm = melodyNotes.map(n => 1 - ((n - min) / range * (1 - 2*pad) + pad)); if (max === min) norm.fill(0.5);
+            drawPath(norm, '#34C759', 3, true);
+            ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+            norm.forEach((yRatio, i) => {
+                const x = i * colW + colW / 2; const y = yRatio * h; const midi = melodyNotes[i];
+                const label = NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1);
+                let textY = y - 10; if (textY < 20) textY = y + 25;
+                ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; ctx.strokeText(label, x, textY);
+                ctx.fillStyle = '#2e7d32'; ctx.fillText(label, x, textY);
+            });
+        }
+    }
+
+    function drawPath(pts, color, width, dashed) {
+        const w = canvas.logicalWidth, h = canvas.logicalHeight, colW = w / noteCount;
+        ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.setLineDash(dashed ? [6, 6] : []);
+        let started = false;
+        pts.forEach((p, i) => { if (p !== null) { const x = i * colW + colW/2, y = p * h; if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }});
+        ctx.stroke(); ctx.setLineDash([]);
+        pts.forEach((p, i) => { if (p !== null) { const x = i * colW + colW/2, y = p * h; ctx.beginPath(); ctx.fillStyle = '#fff'; ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.fillStyle = color; ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fill(); }});
+    }
+
+    function handleInput(cx, cy) {
+        if (!isGameActive || isRevealed) return;
+        const rect = canvas.getBoundingClientRect(); const colIdx = Math.floor((cx - rect.left) / (rect.width / noteCount));
+        if (colIdx >= 0 && colIdx < noteCount) { userPoints[colIdx] = (cy - rect.top) / rect.height; btnCheck.disabled = false; statusText.style.display = 'none'; drawCanvas(); }
+    }
+    canvas.addEventListener('mousedown', e => handleInput(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+    canvas.addEventListener('touchmove', e => { e.preventDefault(); handleInput(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+
+    document.getElementById('btn-decrease').addEventListener('click', () => updateCount(-1));
+    document.getElementById('btn-increase').addEventListener('click', () => updateCount(1));
+    function updateCount(d) { let n = noteCount + d; if (n < 3) n = 3; if (n > 12) n = 12; if (n !== noteCount) { noteCount = n; displayCount.textContent = n; playTickSound(); resetGame(); } }
+    document.getElementById('btn-jump-decrease').addEventListener('click', () => updateJump(-1));
+    document.getElementById('btn-jump-increase').addEventListener('click', () => updateJump(1));
+    function updateJump(d) { let n = maxJumpDegree + d; if (n < 2) n = 2; if (n > 8) n = 8; if (n !== maxJumpDegree) { maxJumpDegree = n; displayJump.textContent = n + "度"; playTickSound(); resetGame(); } }
+    document.getElementById('btn-inst-prev').addEventListener('click', () => updateInst(-1));
+    document.getElementById('btn-inst-next').addEventListener('click', () => updateInst(1));
+    function updateInst(d) { displayInst.textContent = AudioEngine.changeInstrument(d); playTickSound(); }
+    document.getElementById('btn-rhythm-prev').addEventListener('click', () => updateRhythm(-1));
+    document.getElementById('btn-rhythm-next').addEventListener('click', () => updateRhythm(1));
+    function updateRhythm(d) { let n = currentRhythmIndex + d; if (n < 0) n = RHYTHM_MODES.length - 1; if (n >= RHYTHM_MODES.length) n = 0; currentRhythmIndex = n; displayRhythm.textContent = RHYTHM_MODES[n].name; playTickSound(); }
+
+    function resetGame() {
+        if (!isPracticeMode) {
+            userPoints = new Array(noteCount).fill(null); melodyNotes = []; isGameActive = false; isRevealed = false;
+            btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "播放";
+            statusText.style.display = 'block'; practiceBadge.style.display = 'none';
+            resizeCanvas();
+        }
+    }
+
+    btnPlay.addEventListener('click', () => {
+        AudioEngine.stopAll(); playSessionId++;
+        if (!isGameActive) {
+            generateMelody(); userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
+            btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; 
+            statusText.style.display = 'none'; resizeCanvas(); playMelody();
+        } else { playMelody(); }
+    });
+    btnCheck.addEventListener('click', () => { 
+        if(isGameActive) { 
+            AudioEngine.stopAll(); playSessionId++; isRevealed = true; drawCanvas(); 
+            btnCheck.style.display = 'none'; btnNext.style.display = 'flex'; 
+            checkAnswerAndSave(); 
+        } 
+    });
+    btnNext.addEventListener('click', () => {
+        AudioEngine.stopAll(); playSessionId++;
+        if (isPracticeMode) {
+            practiceIndex++;
+            if (practiceIndex < mistakeList.length) { loadMistake(practiceIndex, true); }
+            else { showToast("复习完成！回到普通模式"); isPracticeMode = false; resetGame(); }
+        } else {
+            generateMelody(); userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
+            btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "重听";
+            statusText.style.display = 'none'; resizeCanvas(); playMelody();
+        }
+    });
+
+    setTimeout(() => { resizeCanvas(); initDualPicker(); AudioEngine.init(); }, 100);
+</script>
+</body>
+</html>
