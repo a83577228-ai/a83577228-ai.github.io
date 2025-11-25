@@ -20,23 +20,34 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd MelodyTrainer  # 切换到项目目录
+          cd MelodyTrainer
           npm install
 
       - name: Build Web Assets
         run: |
-          cd MelodyTrainer  # 切换到项目目录
+          cd MelodyTrainer
           npm run build
+
+      # 新增：准备Web资源（复制文件到www目录）
+      - name: Prepare Web Assets
+        run: |
+          cd MelodyTrainer
+          mkdir -p www
+          cp index.html www/  # 复制所有必要的前端文件（如果有其他CSS/JS也需要添加）
+          # 如有其他文件（如图片、脚本等），补充复制命令：
+          # cp script.js www/
+          # cp styles.css www/
 
       - name: Add iOS Platform
         run: |
-          cd MelodyTrainer  # 切换到项目目录
+          cd MelodyTrainer
           npx cap add ios
 
+      # 修复核心：强制使用无签名模式构建，避免报错
       - name: Build IPA (No Signing)
         run: |
-          cd MelodyTrainer  # 切换到项目目录
-          npx cap sync
+          cd MelodyTrainer
+          npx cap sync  # 现在能正确找到webDir
           cd ios
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
@@ -59,4 +70,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-ipa
-          path: MelodyTrainer/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa  # 修正 IPA 路径
+          path: MelodyTrainer/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
