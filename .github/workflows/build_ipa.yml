@@ -20,18 +20,22 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd MelodyTrainer
+          cd MelodyTrainer  # 切换到项目目录
           npm install
 
       - name: Build Web Assets
-        run: npm run build
+        run: |
+          cd MelodyTrainer  # 切换到项目目录
+          npm run build
 
       - name: Add iOS Platform
-        run: npx cap add ios
+        run: |
+          cd MelodyTrainer  # 切换到项目目录
+          npx cap add ios
 
-      # 修复核心：强制使用无签名模式构建，避免报错
       - name: Build IPA (No Signing)
         run: |
+          cd MelodyTrainer  # 切换到项目目录
           npx cap sync
           cd ios
           xcodebuild -workspace App/App.xcworkspace \
@@ -55,4 +59,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-ipa
-          path: ios/build/ipa/*.ipa
+          path: MelodyTrainer/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa  # 修正 IPA 路径
