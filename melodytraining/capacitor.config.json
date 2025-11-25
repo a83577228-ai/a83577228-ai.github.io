@@ -1,9 +1,0 @@
-{
-  "appId": "com.melodytrainer.app",
-  "appName": "MelodyTrainer",
-  "webDir": "public", 
-  "bundledWebRuntime": false
-
-}
-
-
