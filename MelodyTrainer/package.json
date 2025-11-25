@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Melody Contour Training App",
   "scripts": {
-    "build": "echo 'Building web assets' && cp index.html www/index.html  # 复制必要文件到www目录"
+    "build": "mkdir -p www && echo 'Building web assets' && cp index.html www/index.html"
   },
   "dependencies": {
     "@capacitor/core": "^5.0.0",
@@ -14,3 +14,4 @@
   }
 
 }
+
