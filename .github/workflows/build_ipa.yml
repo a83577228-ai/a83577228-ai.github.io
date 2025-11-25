@@ -20,22 +20,22 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          cd a83577228-ai.github.io  # 进入项目根目录
+          cd MelodyTrianer  # 进入项目根目录
           npm install
 
       - name: Add iOS Platform
         run: |
-          cd a83577228-ai.github.io  # 进入项目根目录
+          cd MelodyTrianer  # 进入项目根目录
           npx cap add ios
 
       - name: Sync Project
         run: |
-          cd a83577228-ai.github.io  # 进入项目根目录
+          cd MelodyTrianer  # 进入项目根目录
           npx cap sync
 
       - name: Build Unsigned Archive
         run: |
-          cd a83577228-ai.github.io/ios  # 进入iOS项目目录（带melodytraining前缀）
+          cd MelodyTrianer/ios  # 进入iOS项目目录（带melodytraining前缀）
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
             -sdk iphoneos \
@@ -49,7 +49,7 @@ jobs:
       - name: Create Payload for AltStore
         run: |
           # 路径包含melodytraining前缀
-          cd a83577228-ai.github.io/ios/build/App.xcarchive/Products/Applications
+          cd MelodyTrianer/ios/build/App.xcarchive/Products/Applications
           mkdir Payload
           mv App.app Payload/
           zip -r MelodyTrainer.ipa Payload
@@ -59,4 +59,4 @@ jobs:
         with:
           name: MelodyTrainer-IPA
           # 路径包含melodytraining前缀
-          path: a83577228-ai.github.io/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
+          path: MelodyTrianer/ios/build/App.xcarchive/Products/Applications/MelodyTrainer.ipa
