@@ -43,10 +43,7 @@
         /* 顶部导航栏 */
         .nav-bar {
             display: flex; align-items: center; justify-content: space-between;
-            height: 44px; 
-            padding: 0 10px; 
-            flex-shrink: 0; margin-bottom: 5px;
-            position: relative;
+            height: 44px; padding: 0 10px; flex-shrink: 0; margin-bottom: 5px; position: relative;
         }
 
         .menu-btn, .func-btn {
@@ -58,10 +55,17 @@
         .menu-btn:active, .func-btn:active { background: rgba(0,0,0,0.1); }
         .menu-icon, .func-icon { width: 24px; height: 24px; fill: currentColor; }
 
-        .app-title {
-            font-size: 17px; font-weight: 600; color: #000; letter-spacing: -0.5px;
-            position: absolute; left: 50%; transform: translateX(-50%); pointer-events: none;
-            display: flex; align-items: center; gap: 6px;
+        /* 顶部标题与计分板 */
+        .title-container {
+            display: flex; flex-direction: column; align-items: center;
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .app-title { font-size: 16px; font-weight: 600; color: #000; line-height: 1.2; }
+        .score-board { 
+            font-size: 12px; color: #666; font-weight: 500; margin-top: 2px; 
+            background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 10px;
+            display: none; /* 默认隐藏，开启题目数量限制时显示 */
         }
 
         /* 画布区域 */
@@ -70,12 +74,11 @@
             box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden;
             margin-bottom: 15px; min-height: 0; touch-action: none;
         }
-
         canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
 
         .placeholder-text {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            color: #8E8E93; pointer-events: none; font-size: 15px; font-weight: 500;
+            color: #8E8E93; pointer-events: none; font-size: 15px; font-weight: 500; text-align: center;
         }
 
         .legend-overlay {
@@ -92,7 +95,6 @@
             position: relative; display: flex; align-items: center; height: 56px; flex-shrink: 0;
             padding: 0 5px; 
         }
-
         .main-actions { display: flex; gap: 12px; flex: 1; justify-content: center; width: 100%; }
 
         .btn {
@@ -106,7 +108,7 @@
         .btn-primary { background-color: var(--primary-color); color: white; }
         .btn-success { background-color: var(--success-color); color: white; }
         .btn-next { background-color: #5856D6; color: white; display: none; }
-        .btn:disabled { background-color: #E5E5EA; color: #999; box-shadow: none; }
+        .btn:disabled { background-color: #E5E5EA; color: #999; box-shadow: none; cursor: not-allowed; }
 
         /* 弹窗 */
         .modal-overlay {
@@ -136,6 +138,10 @@
         .settings-content, .mistakes-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; }
         .settings-content { display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px; }
         .mistakes-list { display: flex; flex-direction: column; gap: 10px; padding: 2px; }
+        
+        /* 结果弹窗特别样式 */
+        .result-score { font-size: 48px; font-weight: 800; color: var(--primary-color); text-align: center; margin: 10px 0; }
+        .result-detail { text-align: center; color: #666; font-size: 16px; margin-bottom: 20px; }
 
         .mistake-item {
             background: #F9F9F9; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;
@@ -193,6 +199,8 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px);
         }
         .toast.show { opacity: 1; }
+        .toast.correct { background: rgba(52, 199, 89, 0.9); }
+        .toast.wrong { background: rgba(255, 59, 48, 0.9); }
         
         .practice-indicator {
             background-color: #FF9500; color: white; font-size: 11px; padding: 3px 8px; border-radius: 6px;
@@ -202,7 +210,7 @@
         @media (orientation: landscape) {
             .app-layout { flex-direction: row; gap: 15px; padding-top: max(10px, env(safe-area-inset-top)); padding-bottom: max(10px, env(safe-area-inset-bottom)); }
             .nav-bar { flex-direction: column; height: 100%; width: 44px; justify-content: space-between; padding: 0; margin: 0; }
-            .app-title { display: none; }
+            .title-container { display: none; } /* 横屏不显示标题以节省空间 */
             .canvas-area { margin-bottom: 0; height: 100%; }
             .action-bar { flex-direction: column; height: 100%; width: 70px; padding: 5px 0; }
             .main-actions { flex-direction: column; justify-content: flex-end; width: 100%; margin-left: 0; margin-top: 10px; gap: 10px; }
@@ -221,12 +229,18 @@
             <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
         </button>
         
-        <div class="app-title">
-            旋律听写
-            <span id="practice-badge" class="practice-indicator">复习模式</span>
+        <!-- 标题与计分板 -->
+        <div class="title-container">
+            <div class="app-title">
+                旋律听写
+                <span id="practice-badge" class="practice-indicator">复习模式</span>
+            </div>
+            <div class="score-board" id="score-board">
+                进度: 1/10 | 正确: 0
+            </div>
         </div>
         
-        <!-- 右上角：错题集 -->
+        <!-- 右上角：功能键 (错题集) -->
         <button class="func-btn" id="btn-open-mistakes">
             <svg class="func-icon" viewBox="0 0 24 24"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
         </button>
@@ -271,6 +285,18 @@
             <button class="close-btn" id="btn-close-settings">×</button>
         </div>
         <div class="settings-content">
+            <!-- 题目数量 (新增) -->
+            <div class="control-group">
+                <div class="control-row">
+                    <label>题目数量</label>
+                    <div class="stepper wide-stepper">
+                        <button id="btn-qcount-prev">‹</button>
+                        <span id="qcount-display">无限</span>
+                        <button id="btn-qcount-next">›</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="control-group">
                 <div class="control-row">
                     <label>音色</label>
@@ -345,6 +371,18 @@
         <div class="mistakes-list" id="mistakes-list-container">
             <!-- JS Populate -->
         </div>
+    </div>
+</div>
+
+<!-- 结果弹窗 -->
+<div class="modal-overlay" id="result-modal">
+    <div class="modal-panel" style="align-items: center; text-align: center;">
+        <div class="modal-header" style="width:100%; justify-content:center;">
+            <div class="modal-title">🎉 测试完成</div>
+        </div>
+        <div class="result-score" id="result-score-text">90%</div>
+        <div class="result-detail" id="result-detail-text">答对 9 题 / 共 10 题</div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="closeResultModal()">确定</button>
     </div>
 </div>
 
@@ -467,31 +505,51 @@
         noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination); noise.start(t);
     }
 
+    /** Core Data & State */
     const PIANO_KEYS = []; const NOTE_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
     for (let m = 21; m <= 108; m++) { const noteName = NOTE_NAMES[m % 12]; const octave = Math.floor(m / 12) - 1; PIANO_KEYS.push({ midi: m, label: `${noteName}${octave}` }); }
     const FULL_SCALE = []; for (let m = 21; m <= 108; m++) { const pc = m % 12; if ([0, 2, 4, 5, 7, 9, 11].includes(pc)) FULL_SCALE.push(m); }
 
     const RHYTHM_MODES = [ { name: "无", id: 'none' }, { name: "2拍子", id: '2/4' }, { name: "3拍子", id: '3/4' }, { name: "4拍子", id: '4/4' }, { name: "反拍", id: 'offbeat' } ];
-    let noteCount = 5; let startMidi = 48; let endMidi = 72; let maxJumpDegree = 4;
-    let currentRhythmIndex = 0; let melodyNotes = []; let userPoints = []; let isGameActive = false; let isRevealed = false;
-    let mistakeList = JSON.parse(localStorage.getItem('melody_mistakes') || '[]');
-    let isPracticeMode = false; let practiceIndex = 0; let currentMelodyRhythmMode = 'none'; let playSessionId = 0;
+    // 题目数量选项
+    const QUESTION_COUNTS = [ { val: Infinity, label: "无限" }, { val: 10, label: "10题" }, { val: 20, label: "20题" }, { val: 50, label: "50题" } ];
+    let currentQCountIndex = 0;
 
+    let noteCount = 5; let startMidi = 48; let endMidi = 72; let maxJumpDegree = 4;
+    let currentRhythmIndex = 0;
+    let melodyNotes = []; let userPoints = []; let isGameActive = false; let isRevealed = false;
+    let mistakeList = JSON.parse(localStorage.getItem('melody_mistakes') || '[]');
+    let isPracticeMode = false; let practiceIndex = 0;
+    let currentMelodyRhythmMode = 'none';
+    let playSessionId = 0;
+    
+    // 计分板状态
+    let sessionTotal = Infinity;
+    let sessionCurrent = 0;
+    let sessionCorrect = 0;
+
+    /** DOM Elements */
     const canvas = document.getElementById('melodyCanvas'); const ctx = canvas.getContext('2d');
     const container = document.getElementById('canvas-container'); const statusText = document.getElementById('status-text');
     const displayCount = document.getElementById('note-count-display'); const displayJump = document.getElementById('jump-display');
     const displayInst = document.getElementById('instrument-display'); const displayRhythm = document.getElementById('rhythm-display');
+    const displayQCount = document.getElementById('qcount-display');
     const settingsModal = document.getElementById('settings-modal'); const mistakesModal = document.getElementById('mistakes-modal');
+    const resultModal = document.getElementById('result-modal');
     const btnPlay = document.getElementById('btn-play'); const btnPlayText = document.getElementById('btn-play-text');
     const btnCheck = document.getElementById('btn-check'); const btnNext = document.getElementById('btn-next');
-    const toastMsg = document.getElementById('toast-msg'); const practiceBadge = document.getElementById('practice-badge');
+    const toastMsg = document.getElementById('toast-msg');
+    const practiceBadge = document.getElementById('practice-badge');
     const btnPracticeAll = document.getElementById('btn-practice-all');
+    const scoreBoard = document.getElementById('score-board');
 
-    function showToast(msg) {
-        toastMsg.textContent = msg; toastMsg.classList.add('show');
-        setTimeout(() => toastMsg.classList.remove('show'), 2000);
+    function showToast(msg, type = '') {
+        toastMsg.textContent = msg; 
+        toastMsg.className = 'toast show ' + type;
+        setTimeout(() => toastMsg.className = 'toast', 1500);
     }
 
+    /** Logic */
     function resizeCanvas() {
         const rect = container.getBoundingClientRect(); const dpr = window.devicePixelRatio || 1;
         canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
@@ -519,6 +577,11 @@
         isPracticeMode = true; practiceIndex = 0; practiceBadge.style.display = 'inline-block';
         mistakesModal.classList.remove('show'); loadMistake(0, true);
     });
+    
+    window.closeResultModal = function() {
+        resultModal.classList.remove('show');
+        resetGame(); // Reset to clean state
+    };
 
     function renderMistakes() {
         const list = document.getElementById('mistakes-list-container'); list.innerHTML = '';
@@ -532,7 +595,7 @@
     }
 
     window.loadMistake = function(index, isAuto = false) {
-        if (!isAuto) { isPracticeMode = false; practiceBadge.style.display = 'none'; }
+        if (!isAuto) { isPracticeMode = false; practiceBadge.style.display = 'none'; scoreBoard.style.display = 'none';}
         const item = mistakeList[index]; if (!item) return; 
         melodyNotes = [...item.notes]; noteCount = melodyNotes.length; displayCount.textContent = noteCount;
         currentMelodyRhythmMode = RHYTHM_MODES[currentRhythmIndex].id;
@@ -548,20 +611,48 @@
         const now = new Date(); const dateStr = `${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes()}`;
         const newItem = { notes: [...melodyNotes], jump: maxJumpDegree, date: dateStr };
         const exists = mistakeList.some(m => JSON.stringify(m.notes) === JSON.stringify(newItem.notes));
-        if (!exists) { mistakeList.unshift(newItem); if (mistakeList.length > 50) mistakeList.pop(); localStorage.setItem('melody_mistakes', JSON.stringify(mistakeList)); showToast('已加入错题集'); }
+        if (!exists) { mistakeList.unshift(newItem); if (mistakeList.length > 50) mistakeList.pop(); localStorage.setItem('melody_mistakes', JSON.stringify(mistakeList)); }
     }
 
-    function checkAnswerAndSave() {
-        if (isPracticeMode) return;
-        const tolerance = 0.03; let isWrong = false;
+    // 核心判定逻辑：相对位置（走向）匹配即正确
+    function evaluateAttempt() {
+        let isWrong = false;
+        // 容差值：移除严格的 0.03，因为我们现在只关心相对方向
+        // 但是为了防止画直线太难，还是保留极小的防抖动
+        const tolerance = 0.01; 
+        
         for (let i = 0; i < melodyNotes.length - 1; i++) {
-            const melDir = Math.sign(melodyNotes[i+1] - melodyNotes[i]);
+            // 1. 旋律实际走向: +1 (上行), -1 (下行), 0 (平行)
+            // 注意：MIDI值越大音越高。
+            const melDiff = melodyNotes[i+1] - melodyNotes[i];
+            const melDir = Math.sign(melDiff); 
+
+            // 2. 用户绘制走向
+            // 注意：画布Y坐标越小音越高。所以要反过来：(前 - 后) > 0 代表前比后大(低)，即后比前小(高) -> 上行
             if (userPoints[i] === null || userPoints[i+1] === null) { isWrong = true; break; }
-            const diff = userPoints[i] - userPoints[i+1];
-            let userDir = (Math.abs(diff) <= tolerance) ? 0 : Math.sign(diff);
+            
+            const userDiff = userPoints[i] - userPoints[i+1];
+            let userDir = 0;
+            
+            if (Math.abs(userDiff) <= tolerance) { 
+                userDir = 0; 
+            } else {
+                userDir = Math.sign(userDiff);
+            }
+            
+            // 3. 只要方向一致就算对 (不考虑幅度)
             if (melDir !== userDir) { isWrong = true; break; }
         }
-        if (isWrong) { saveMistake(); }
+        return !isWrong;
+    }
+
+    function updateScoreBoard() {
+        if (sessionTotal === Infinity) {
+            scoreBoard.style.display = 'none';
+        } else {
+            scoreBoard.style.display = 'block';
+            scoreBoard.textContent = `进度: ${sessionCurrent}/${sessionTotal} | 正确: ${sessionCorrect}`;
+        }
     }
 
     function initDualPicker() { createPickerColumn('picker-start', startMidi, (val) => { startMidi = val; resetGame(); }); createPickerColumn('picker-end', endMidi, (val) => { endMidi = val; resetGame(); }); }
@@ -608,10 +699,11 @@
         AudioEngine.stopAll();
         await AudioEngine.init();
         if (btnPlayText.textContent === "播放" || btnPlayText.textContent === "重听") {
+             const prevText = btnPlayText.textContent;
              btnPlayText.textContent = "加载中";
              await AudioEngine.ensureSamplesLoaded();
              if (mySession !== playSessionId) return;
-             btnPlayText.textContent = "重听"; 
+             btnPlayText.textContent = prevText === "播放" ? "重听" : "重听"; 
         }
         if (!AudioEngine.ctx) return;
         const now = AudioEngine.ctx.currentTime; const noteDuration = 0.6; const mode = currentMelodyRhythmMode;
@@ -686,12 +778,33 @@
     document.getElementById('btn-rhythm-prev').addEventListener('click', () => updateRhythm(-1));
     document.getElementById('btn-rhythm-next').addEventListener('click', () => updateRhythm(1));
     function updateRhythm(d) { let n = currentRhythmIndex + d; if (n < 0) n = RHYTHM_MODES.length - 1; if (n >= RHYTHM_MODES.length) n = 0; currentRhythmIndex = n; displayRhythm.textContent = RHYTHM_MODES[n].name; playTickSound(); }
+    document.getElementById('btn-qcount-prev').addEventListener('click', () => updateQCount(-1));
+    document.getElementById('btn-qcount-next').addEventListener('click', () => updateQCount(1));
+    function updateQCount(d) {
+        let n = currentQCountIndex + d;
+        if (n < 0) n = QUESTION_COUNTS.length - 1;
+        if (n >= QUESTION_COUNTS.length) n = 0;
+        currentQCountIndex = n;
+        sessionTotal = QUESTION_COUNTS[n].val;
+        displayQCount.textContent = QUESTION_COUNTS[n].label;
+        // Reset Session
+        sessionCurrent = 0; sessionCorrect = 0;
+        updateScoreBoard();
+        playTickSound();
+    }
 
     function resetGame() {
         if (!isPracticeMode) {
+            // Reset for new session start logic
             userPoints = new Array(noteCount).fill(null); melodyNotes = []; isGameActive = false; isRevealed = false;
             btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "播放";
             statusText.style.display = 'block'; practiceBadge.style.display = 'none';
+            
+            // New Session Reset
+            if (sessionCurrent >= sessionTotal) {
+                sessionCurrent = 0; sessionCorrect = 0;
+            }
+            updateScoreBoard();
             resizeCanvas();
         }
     }
@@ -699,18 +812,35 @@
     btnPlay.addEventListener('click', () => {
         AudioEngine.stopAll(); playSessionId++;
         if (!isGameActive) {
+            // New Round
+            if (!isPracticeMode && sessionCurrent < sessionTotal) {
+                sessionCurrent++;
+                updateScoreBoard();
+            }
+            
             generateMelody(); userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
             btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; 
             statusText.style.display = 'none'; resizeCanvas(); playMelody();
         } else { playMelody(); }
     });
+    
     btnCheck.addEventListener('click', () => { 
         if(isGameActive) { 
             AudioEngine.stopAll(); playSessionId++; isRevealed = true; drawCanvas(); 
             btnCheck.style.display = 'none'; btnNext.style.display = 'flex'; 
-            checkAnswerAndSave(); 
+            
+            const isCorrect = evaluateAttempt();
+            if (isCorrect) {
+                showToast("回答正确", "correct");
+                if (!isPracticeMode) sessionCorrect++;
+            } else {
+                showToast("回答错误", "wrong");
+                saveMistake();
+            }
+            updateScoreBoard();
         } 
     });
+    
     btnNext.addEventListener('click', () => {
         AudioEngine.stopAll(); playSessionId++;
         if (isPracticeMode) {
@@ -718,9 +848,20 @@
             if (practiceIndex < mistakeList.length) { loadMistake(practiceIndex, true); }
             else { showToast("复习完成！回到普通模式"); isPracticeMode = false; resetGame(); }
         } else {
-            generateMelody(); userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
-            btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "重听";
-            statusText.style.display = 'none'; resizeCanvas(); playMelody();
+            // Check if session ended
+            if (sessionCurrent >= sessionTotal) {
+                // Show Result
+                document.getElementById('result-score-text').textContent = Math.round((sessionCorrect / sessionTotal) * 100) + "%";
+                document.getElementById('result-detail-text').textContent = `答对 ${sessionCorrect} 题 / 共 ${sessionTotal} 题`;
+                resultModal.classList.add('show');
+            } else {
+                // Next Question
+                sessionCurrent++;
+                updateScoreBoard();
+                generateMelody(); userPoints = new Array(noteCount).fill(null); isGameActive = true; isRevealed = false;
+                btnCheck.style.display = 'flex'; btnCheck.disabled = true; btnNext.style.display = 'none'; btnPlayText.textContent = "重听";
+                statusText.style.display = 'none'; resizeCanvas(); playMelody();
+            }
         }
     });
 
